@@ -33,18 +33,28 @@ class Session(object):
 def searchAndWrite(searchterms, symbols, url):
     for i, searchterm in enumerate(searchterms):
         if not searchterm == '':
+            with open('webpage\\index.html', 'a') as html:
+                html.write('''<h3 class='card-title'>{}</h3>
+                <table class="table table-sm">
+				<thead><th scope='col'>SYMBOL</th><th scope='col'>DOC NAME</th><th scope='col'>DOC LINK</th></thead>
+				<tbody>
+                '''.format(searchterm))
             for symbol in symbols:
                 print('{}) Searching: {} in {}'.format(i + 1, searchterm, symbol['symbol']))
                 session = Session(url)
                 session.searchDoc(symbol['symbol'], searchterm)
-                for result in session.readResults(symbol['filter']):
-                    if not len(result) == 0:
-                        with open ('output.csv','a') as f:
-                            f.write('{},{},{},{}\n'.format(searchterm, symbol['symbol'], result['text'] ,result['link']))
-                    else:
-                        with open ('output.csv','a') as f:
-                            f.write('{},No resualts in {}\n'.format(searchterm, symbol['symbol']))
+                if not session.readResults(symbol['filter']) == 0:
+                    for result in session.readResults(symbol['filter']):
+                        writeResult(symbol['symbol'], result['text'] ,result['link'])
+                else:
+                        writeResult(symbol['symbol'], '<b>NO RESULTS<b>','')
                 session.driver.close()
+            with open('webpage\\index.html', 'a') as html:
+                html.write('</tbody></table>\n')
+
+def writeResult(symbol, docName, docLink):
+    with open ('webpage\\index.html', 'a') as html:
+        html.write('<tr><td>{}</td><td>{}</td><td><a href={}><i>LINK</i></a></td></tr>\n'.format(symbol,docName,docLink))
 
 def killBrowser():
     options = Options()
@@ -52,6 +62,24 @@ def killBrowser():
     driver = webdriver.Firefox(firefox_options=options, executable_path='./geckodriver.exe')
     driver.quit()
     print('killed {}'.format(driver))
+
+def createHTMLhead():
+    with open ('webpage\\index.html', 'w') as html:
+        html.write('''
+        <!doctype html>
+        <html lang="en">
+        <head>
+        <title>UN Scraper results</title>
+        <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+	    </head>
+        <body class='card w-75'>
+	        <div class='container'><h2> Results </h2><div class='card-body'>
+        ''')
+
+def closeHTML():
+    with open ('index.html', 'a') as html:
+        html.write('</div></div></body></html>')
 
 def main():
     symbols = [
@@ -63,9 +91,8 @@ def main():
         searchterms = f.read().split('\n')
     print(searchterms)
     atexit.register(killBrowser)
-    with open('output.csv', 'w') as f:
-        f.write('SearchTerm,Symbol,DocName,DocLink\n')
-
+    atexit.register(closeHTML)
+    createHTMLhead()
     searchAndWrite(searchterms, symbols, url)
 
 
